@@ -16,16 +16,16 @@ export async function updateGtfs(source: Source) {
     );
 
     try {
-      const received = await getStaleness(source.staticResourceHref);
+      const received = await getStaleness(source.staticResourceHref).catch(() => null);
       console.log(
         "\tⓘ New values: [Last-Modified: '%s', ETag: '%s']",
-        received.lastModified ?? "None",
-        received.etag ?? "None",
+        received?.lastModified ?? "None",
+        received?.etag ?? "None",
       );
 
-      shouldUpdate = source.gtfs.lastModified !== received.lastModified || source.gtfs.etag !== received.etag;
+      shouldUpdate = source.gtfs.lastModified !== received?.lastModified || source.gtfs.etag !== received?.etag;
     } catch {
-      console.warn("⚠ Failed to retrieve resource staleness, considering stale 1 hour after import.");
+      console.warn("\t⚠ Failed to retrieve resource staleness, considering stale 1 hour after import.");
       shouldUpdate = Temporal.Now.instant().since(source.gtfs.importedAt).total("hours") >= 1;
     }
   } else {
@@ -33,8 +33,11 @@ export async function updateGtfs(source: Source) {
     shouldUpdate = true;
   }
   if (shouldUpdate) {
-    console.log("⚠ Updating resource.");
-    return initializeResource(source, false);
+    try {
+      await initializeResource(source, false);
+    } catch (e) {
+      console.error("\t✗ Failed to update resource", e);
+    }
   } else {
     console.log("✓ Resource does not need to be updated.\n");
   }
