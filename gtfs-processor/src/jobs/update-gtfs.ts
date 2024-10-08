@@ -16,17 +16,22 @@ export async function updateGtfs(source: Source) {
     );
 
     try {
-      const received = await getStaleness(source.staticResourceHref).catch(() => null);
+      const received = await getStaleness(source.staticResourceHref).catch(() => ({ lastModified: null, etag: null }));
       console.log(
         "\tⓘ New values: [Last-Modified: '%s', ETag: '%s']",
         received?.lastModified ?? "None",
         received?.etag ?? "None",
       );
 
-      shouldUpdate = source.gtfs.lastModified !== received?.lastModified || source.gtfs.etag !== received?.etag;
+      if (received.lastModified === null && received.etag === null) {
+        console.log("\tⓘ No stale data could be retrieved, considering stale 1 hour after import.");
+        shouldUpdate = Temporal.Now.instant().since(source.gtfs.importedAt).total("minutes") >= 60;
+      } else {
+        shouldUpdate = source.gtfs.lastModified !== received?.lastModified || source.gtfs.etag !== received?.etag;
+      }
     } catch {
       console.warn("\t⚠ Failed to retrieve resource staleness, considering stale 1 hour after import.");
-      shouldUpdate = Temporal.Now.instant().since(source.gtfs.importedAt).total("hours") >= 1;
+      shouldUpdate = Temporal.Now.instant().since(source.gtfs.importedAt).total("minutes") >= 60;
     }
   } else {
     console.log("\tⓘ Resource has not loaded yet.");
