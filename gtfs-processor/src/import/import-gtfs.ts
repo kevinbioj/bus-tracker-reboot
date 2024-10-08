@@ -207,17 +207,19 @@ async function importTrips(
     const arrivalHours = +stopTimeRecord.arrival_time.slice(0, 2);
     const departureHours = +stopTimeRecord.departure_time.slice(0, 2);
 
+    const mismatchingTimes = stopTimeRecord.arrival_time !== stopTimeRecord.departure_time;
+
     const stopTime = new StopTime(
       +stopTimeRecord.stop_sequence,
       stop,
       createPlainTime(`${(arrivalHours % 24).toString().padStart(2, "0")}:${stopTimeRecord.arrival_time.slice(3)}`),
       Math.floor(arrivalHours / 24),
-      stopTimeRecord.arrival_time !== stopTimeRecord.departure_time
+      mismatchingTimes
         ? createPlainTime(
             `${(departureHours % 24).toString().padStart(2, "0")}:${stopTimeRecord.departure_time.slice(3)}`,
           )
         : undefined,
-      stopTimeRecord.arrival_time !== stopTimeRecord.departure_time ? Math.floor(departureHours / 24) : undefined,
+      mismatchingTimes ? Math.floor(departureHours / 24) : undefined,
     );
 
     trip.stopTimes.push(stopTime);
