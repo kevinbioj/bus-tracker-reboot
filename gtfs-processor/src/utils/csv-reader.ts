@@ -35,16 +35,6 @@ export async function readCsv<T extends CsvRecord<string>>(
       header: true,
       skipEmptyLines: true,
       step: (results) => onRecord(results.data),
-      worker: true,
     });
   });
-  // const parser = readStream.pipe(
-  //   parse({ bom: true, columns: true, delimiter, skipEmptyLines: true }),
-  // );
-
-  // parser.on("data", onRecord);
-  // return new Promise((resolve, reject) => {
-  //   parser.once("end", resolve);
-  //   parser.once("error", reject);
-  // });
 }
