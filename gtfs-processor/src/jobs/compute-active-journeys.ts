@@ -7,6 +7,7 @@ import type { TripDescriptor } from "../model/gtfs-rt.js";
 import type { Journey } from "../model/journey.js";
 import type { Trip } from "../model/trip.js";
 import type { Source } from "../source.js";
+import { padSourceId } from "../utils/pad-source-id.js";
 import { createStopWatch } from "../utils/stop-watch.js";
 
 const matchTripAndTripUpdate = (trip: Trip, tripDescriptor: TripDescriptor) => {
@@ -29,17 +30,18 @@ export async function computeActiveJourneys(source: Source) {
 
   const now = Temporal.Now.instant();
   const watch = createStopWatch();
-  console.log(`► Generating active journeys for '%s' at '%s'.`, source.id, now);
+  const sourceId = padSourceId(source);
+  const updateLog = console.draft(`%s ► Generating active journeys list.`, sourceId);
 
-  console.log("\t↳ Downloading real-time feeds.");
+  updateLog("%s ► Downloading real-time data from feeds.", sourceId);
   const { tripUpdates, vehiclePositions } = await downloadGtfsRt(
     source.realtimeResourceHrefs ?? [],
     source.mapTripUpdate,
     source.mapVehiclePosition,
   );
-  console.log("\t✓ Download completed in %dms!", watch.step());
+  const downloadTime = watch.step();
 
-  console.log("\t↳ Computing active journeys.");
+  updateLog("%s ► Computing active journeys.", sourceId);
   const activeJourneys = new Map<string, ActiveJourney>();
   const handledJourneyIds = new Set<string>();
   const handledBlockIds = new Set<string>();
@@ -184,7 +186,14 @@ export async function computeActiveJourneys(source: Source) {
     });
   }
 
-  console.log("\t✓ Computed %d active journeys in %dms!", activeJourneys.size, watch.step());
-  console.log("✓ Generation of active journeys was completed in %dms!\n", watch.total());
+  const computeTime = watch.step();
+  updateLog(
+    "%s ✓ Computed %d journeys in %dms (%dms download - %dms load).",
+    sourceId,
+    activeJourneys.size,
+    watch.total(),
+    downloadTime,
+    computeTime,
+  );
   return Array.from(activeJourneys.values());
 }

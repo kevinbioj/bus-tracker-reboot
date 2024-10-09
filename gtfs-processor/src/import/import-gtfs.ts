@@ -11,13 +11,13 @@ import { Trip } from "../model/trip.js";
 import { type CsvRecord, readCsv } from "../utils/csv-reader.js";
 import { fileExists } from "../utils/file-exists.js";
 
-export async function importGtfs(gtfsDirectory: string) {
+export async function importGtfs(gtfsDirectory: string, excludeRoute?: (route: RouteRecord) => boolean) {
   const [agencies, services, stops] = await Promise.all([
     importAgencies(gtfsDirectory),
     importServices(gtfsDirectory),
     importStops(gtfsDirectory),
   ]);
-  const routes = await importRoutes(gtfsDirectory, agencies);
+  const routes = await importRoutes(gtfsDirectory, agencies, excludeRoute);
   const trips = await importTrips(gtfsDirectory, routes, services, stops);
   return { agencies, routes, services, stops, trips, journeys: [] };
 }
@@ -125,15 +125,21 @@ async function importStops(gtfsDirectory: string) {
   return stops;
 }
 
-type RouteRecord = CsvRecord<
+export type RouteRecord = CsvRecord<
   "route_id" | "agency_id" | "route_short_name" | "route_type",
   "route_color" | "route_text_color"
 >;
 
-async function importRoutes(gtfsDirectory: string, agencies: Map<string, Agency>) {
+async function importRoutes(
+  gtfsDirectory: string,
+  agencies: Map<string, Agency>,
+  excludeRoute?: (route: RouteRecord) => boolean,
+) {
   const routes = new Map<string, Route>();
 
   await readCsv<RouteRecord>(join(gtfsDirectory, "routes.txt"), (routeRecord) => {
+    if (excludeRoute?.(routeRecord)) return;
+
     const agency = agencies.get(routeRecord.agency_id);
     if (typeof agency === "undefined") {
       throw new Error(`Unknown agency with id '${routeRecord.agency_id}' for route '${routeRecord.route_id}'.`);
@@ -164,11 +170,13 @@ async function importTrips(
   stops: Map<string, Stop>,
 ) {
   const trips = new Map<string, Trip>();
+  const usedStops = new Set<Stop>();
 
   await readCsv<TripRecord>(join(gtfsDirectory, "trips.txt"), (tripRecord) => {
     const route = routes.get(tripRecord.route_id);
     if (typeof route === "undefined") {
-      throw new Error(`Unknown route with id '${tripRecord.route_id}' for trip '${tripRecord.trip_id}'.`);
+      // throw new Error(`Unknown route with id '${tripRecord.route_id}' for trip '${tripRecord.trip_id}'.`);
+      return;
     }
 
     const service = services.get(tripRecord.service_id);
@@ -192,9 +200,10 @@ async function importTrips(
   await readCsv<StopTimeRecord>(join(gtfsDirectory, "stop_times.txt"), (stopTimeRecord) => {
     const trip = trips.get(stopTimeRecord.trip_id);
     if (typeof trip === "undefined") {
-      throw new Error(
-        `Unknown trip with id '${stopTimeRecord.trip_id}' for {${stopTimeRecord.stop_sequence}/${stopTimeRecord.stop_id}/${stopTimeRecord.arrival_time}/${stopTimeRecord.departure_time}}.`,
-      );
+      // throw new Error(
+      //   `Unknown trip with id '${stopTimeRecord.trip_id}' for {${stopTimeRecord.stop_sequence}/${stopTimeRecord.stop_id}/${stopTimeRecord.arrival_time}/${stopTimeRecord.departure_time}}.`,
+      // );
+      return;
     }
 
     const stop = stops.get(stopTimeRecord.stop_id);
@@ -203,6 +212,7 @@ async function importTrips(
         `Unknown stop with id '${stopTimeRecord.stop_id}' for {${stopTimeRecord.stop_sequence}/${stopTimeRecord.stop_id}/${stopTimeRecord.arrival_time}/${stopTimeRecord.departure_time}}.`,
       );
     }
+    usedStops.add(stop);
 
     const arrivalHours = +stopTimeRecord.arrival_time.slice(0, 2);
     const departureHours = +stopTimeRecord.departure_time.slice(0, 2);
@@ -227,6 +237,12 @@ async function importTrips(
 
   for (const trip of trips.values()) {
     trip.stopTimes.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  for (const [key, stop] of stops) {
+    if (!usedStops.has(stop)) {
+      stops.delete(key);
+    }
   }
 
   return trips;

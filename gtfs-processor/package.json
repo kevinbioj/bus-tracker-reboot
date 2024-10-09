@@ -30,8 +30,10 @@
   "dependencies": {
     "@hono/node-server": "^1.13.1",
     "decompress": "^4.2.1",
+    "draftlog": "^1.0.13",
     "gtfs-realtime-bindings": "^1.1.1",
     "hono": "^4.6.3",
+    "p-limit": "^6.1.0",
     "papaparse": "^5.4.1",
     "temporal-polyfill": "^0.2.5"
   }

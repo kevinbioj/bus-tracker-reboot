@@ -1,7 +1,7 @@
 /** @type {import('../src/source').Source[]} */
 const resources = [
   {
-    id: "transdev-rouen",
+    id: "tcar",
     staticResourceHref: "https://api.mrn.cityway.fr/dataflow/offre-tc/download?provider=TCAR&dataFormat=GTFS",
     realtimeResourceHrefs: [
       "https://gtfs.bus-tracker.fr/gtfs-rt/tcar/trip-updates",
@@ -32,7 +32,7 @@ const resources = [
     getOperatorRef: () => "TAE",
   },
   {
-    id: "transdev-grand-rouen",
+    id: "tgr",
     staticResourceHref: "https://pysae.com/api/v2/groups/tcar/gtfs/pub",
     realtimeResourceHrefs: ["https://pysae.com/api/v2/groups/tcar/gtfs-rt"],
     allowScheduled: (trip) => trip.route.name !== "06",

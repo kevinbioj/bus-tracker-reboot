@@ -12,5 +12,7 @@ Pour des raisons de pragmatisme, un processeur peut prendre en charge plusieurs 
 | Configuration | Couverture                |
 | ------------- | ------------------------- |
 | astuce        | Astuce (tous exploitants) |
+| bordeaux      | TBM                       |
 | deepmob       | DeepMob                   |
 | lia           | LiA                       |
+| nomad         | NOMAD Car + NOMAD Train   |

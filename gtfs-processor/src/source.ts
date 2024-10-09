@@ -1,3 +1,4 @@
+import type { RouteRecord } from "./import/import-gtfs.js";
 import type { TripUpdate, VehicleDescriptor, VehiclePosition } from "./model/gtfs-rt.js";
 import type { Gtfs } from "./model/gtfs.js";
 import type { Journey } from "./model/journey.js";
@@ -8,6 +9,8 @@ export type Source = {
   // --- Data provisioning
   staticResourceHref: string;
   realtimeResourceHrefs?: string[];
+  // --- Optional data filtering
+  excludeRoute?: (route: RouteRecord) => boolean;
   // --- Additional data acquirance
   allowScheduled?: (trip: Trip) => boolean;
   getAheadTime?: (journey?: Journey) => number;
@@ -33,7 +36,7 @@ export async function loadConfiguration(name: string) {
         source.realtimeResourceHrefs?.length ?? 0,
       ),
     );
-    console.log(`✓ Loaded %d sources!\n`, sources.length);
+    console.log();
     return sources;
   } catch (e) {
     if (e instanceof Error && "code" in e && e.code === "ERR_MODULE_NOT_FOUND") {
