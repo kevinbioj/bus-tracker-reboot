@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { Source } from "../source.js";
+import type { Source } from "../configuration.js";
 import { padSourceId } from "../utils/pad-source-id.js";
 
 export function sweepJourneys(source: Source) {

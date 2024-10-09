@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Temporal } from "temporal-polyfill";
 
+import type { Source } from "../configuration.js";
 import { downloadGtfs } from "../download/download-gtfs.js";
 import { importGtfs } from "../import/import-gtfs.js";
 import type { Gtfs } from "../model/gtfs.js";
-import type { Source } from "../source.js";
 import { getStaleness } from "../utils/get-staleness.js";
 import { padSourceId } from "../utils/pad-source-id.js";
 import { createStopWatch } from "../utils/stop-watch.js";

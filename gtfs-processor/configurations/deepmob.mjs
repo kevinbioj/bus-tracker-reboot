@@ -1,5 +1,7 @@
+import redisOptions from "./redis/normandie.mjs";
+
 /** @type {import('../src/source').Source[]} */
-const resources = [
+const sources = [
   {
     id: "deepmob",
     staticResourceHref: "https://www.data.gouv.fr/fr/datasets/r/62248658-0eba-4f4e-b367-aaea635ecd38",
@@ -11,4 +13,9 @@ const resources = [
   },
 ];
 
-export default resources;
+const configuration = {
+  redisOptions,
+  sources,
+};
+
+export default configuration;

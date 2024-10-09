@@ -1,5 +1,7 @@
-/** @type {import('../src/source').Source[]} */
-const resources = [
+import redisOptions from "./redis/nouvelle-aquitaine.mjs";
+
+/** @type {import('../src/configuration').Source[]} */
+const sources = [
   {
     id: "bordeaux",
     staticResourceHref:
@@ -13,4 +15,9 @@ const resources = [
   },
 ];
 
-export default resources;
+const configuration = {
+  redisOptions,
+  sources,
+};
+
+export default configuration;

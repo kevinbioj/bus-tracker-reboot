@@ -1,7 +1,9 @@
+import redisOptions from "./redis/normandie.mjs";
+
 const liaTniLines = ["12", "13", "15", "18", "21"];
 
 /** @type {import('../src/source').Source[]} */
-const resources = [
+const sources = [
   {
     id: "lia",
     staticResourceHref: "https://www.data.gouv.fr/fr/datasets/r/1e666e24-58ee-46b9-8952-ea2755ba88f2",
@@ -15,4 +17,9 @@ const resources = [
   },
 ];
 
-export default resources;
+const configuration = {
+  redisOptions,
+  sources,
+};
+
+export default configuration;

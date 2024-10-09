@@ -1,5 +1,7 @@
-/** @type {import('../src/source').Source[]} */
-const resources = [
+import redisOptions from "./redis/normandie.mjs";
+
+/** @type {import('../src/configuration').Source[]} */
+const sources = [
   {
     id: "nomad-car",
     staticResourceHref: "https://gtfs.bus-tracker.fr/nomad.zip",
@@ -17,4 +19,9 @@ const resources = [
   },
 ];
 
-export default resources;
+const configuration = {
+  redisOptions,
+  sources,
+};
+
+export default configuration;

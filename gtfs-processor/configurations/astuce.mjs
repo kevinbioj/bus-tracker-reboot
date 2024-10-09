@@ -1,5 +1,7 @@
-/** @type {import('../src/source').Source[]} */
-const resources = [
+import redisOptions from "./redis/normandie.mjs";
+
+/** @type {import('../src/configuration').Source[]} */
+const sources = [
   {
     id: "tcar",
     staticResourceHref: "https://api.mrn.cityway.fr/dataflow/offre-tc/download?provider=TCAR&dataFormat=GTFS",
@@ -55,4 +57,9 @@ const resources = [
   },
 ];
 
-export default resources;
+const configuration = {
+  redisOptions,
+  sources,
+};
+
+export default configuration;

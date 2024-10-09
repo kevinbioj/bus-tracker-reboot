@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { Source } from "../source.js";
+import type { Source } from "../configuration.js";
 import { getStaleness } from "../utils/get-staleness.js";
 import { padSourceId } from "../utils/pad-source-id.js";
 

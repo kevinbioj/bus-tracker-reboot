@@ -1,12 +1,12 @@
 import { Temporal } from "temporal-polyfill";
 
 import { createPlainDate } from "../cache/temporal-cache.js";
+import type { Source } from "../configuration.js";
 import { downloadGtfsRt } from "../download/download-gtfs-rt.js";
 import type { ActiveJourney } from "../model/active-journey.js";
 import type { TripDescriptor } from "../model/gtfs-rt.js";
 import type { Journey } from "../model/journey.js";
 import type { Trip } from "../model/trip.js";
-import type { Source } from "../source.js";
 import { padSourceId } from "../utils/pad-source-id.js";
 import { createStopWatch } from "../utils/stop-watch.js";
 
@@ -188,7 +188,7 @@ export async function computeActiveJourneys(source: Source) {
 
   const computeTime = watch.step();
   updateLog(
-    "%s ✓ Computed %d journeys in %dms (%dms download - %dms load).",
+    "%s ✓ Computed %d journeys in %dms (%dms download - %dms compute).",
     sourceId,
     activeJourneys.size,
     watch.total(),

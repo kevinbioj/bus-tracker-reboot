@@ -1,8 +1,15 @@
+import type { RedisClientOptions } from "redis";
+
 import type { RouteRecord } from "./import/import-gtfs.js";
 import type { TripUpdate, VehicleDescriptor, VehiclePosition } from "./model/gtfs-rt.js";
 import type { Gtfs } from "./model/gtfs.js";
 import type { Journey } from "./model/journey.js";
 import type { Trip } from "./model/trip.js";
+
+export type Configuration = {
+  redisOptions: RedisClientOptions;
+  sources: Source[];
+};
 
 export type Source = {
   id: string;
@@ -28,8 +35,8 @@ export async function loadConfiguration(name: string) {
   try {
     console.log("► Loading configuration '%s'.", name);
     const module = await import(`../configurations/${name}.mjs`);
-    const sources = module.default as Source[];
-    sources.forEach((source) =>
+    const configuration = module.default as Configuration;
+    configuration.sources.forEach((source) =>
       console.log(
         `\tⓘ Loaded source '%s' with %d real-time feed(s).`,
         source.id,
@@ -37,7 +44,7 @@ export async function loadConfiguration(name: string) {
       ),
     );
     console.log();
-    return sources;
+    return configuration;
   } catch (e) {
     if (e instanceof Error && "code" in e && e.code === "ERR_MODULE_NOT_FOUND") {
       throw new Error(`Unable to find a configuration named '${name}'.`);
