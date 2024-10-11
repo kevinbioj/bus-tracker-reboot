@@ -5,6 +5,7 @@ import { createZonedDateTime } from "../cache/temporal-cache.js";
 import { Journey } from "./journey.js";
 import type { Route } from "./route.js";
 import type { Service } from "./service.js";
+import type { Shape } from "./shape.js";
 import type { StopTime } from "./stop-time.js";
 import type { Stop } from "./stop.js";
 
@@ -27,6 +28,7 @@ export class Trip {
     readonly direction: 0 | 1,
     readonly headsign?: string,
     readonly block?: string,
+    readonly shape?: Shape,
   ) {}
 
   getScheduledJourney(date: Temporal.PlainDate, force = false) {

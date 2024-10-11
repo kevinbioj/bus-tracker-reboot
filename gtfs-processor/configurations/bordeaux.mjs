@@ -1,4 +1,4 @@
-import redisOptions from "./redis/nouvelle-aquitaine.mjs";
+import { Temporal } from "temporal-polyfill";
 
 /** @type {import('../src/configuration').Source[]} */
 const sources = [
@@ -15,8 +15,14 @@ const sources = [
   },
 ];
 
+/** @type {import('../src/configuration').Configuration} */
 const configuration = {
-  redisOptions,
+  computeCron: Temporal.Duration.from({ seconds: 10 }),
+  redisOptions: {
+    url: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
+    username: process.env.REDIS_USERNAME,
+    password: process.env.REDIS_PASSWORD,
+  },
   sources,
 };
 

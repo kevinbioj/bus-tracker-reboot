@@ -44,6 +44,8 @@ console.log("%s ► Loading resources (concurrency limit: %d).", getTimestamp(),
 await Promise.all(configuration.sources.map((source) => initLimitFn(() => loadGtfs(source))));
 console.log("✓ Load complete in %dms.\n", initWatch.total());
 
+console.log("► Initialization is complete.\n");
+
 setInterval(
   async () => {
     console.log("%s ► Checking resources staleness.", getTimestamp());
@@ -66,17 +68,22 @@ setInterval(
 
 async function computeAndPublish() {
   const watch = createStopWatch();
+  const computeLimit = 6;
+  const computeLimitFn = pLimit(computeLimit);
   const updateLog = console.draft("%s ► Computing active journeys to publish.", getTimestamp());
   try {
-    const journeys = (await Promise.all(configuration.sources.map((source) => computeActiveJourneys(source)))).flat();
+    const journeys = (
+      await Promise.all(configuration.sources.map((source) => computeLimitFn(() => computeActiveJourneys(source))))
+    ).flat();
     updateLog("%s ► Publishing %d journey entries.", getTimestamp(), journeys.length);
     await Promise.all(journeys.map((journey) => redis.publish(channel, JSON.stringify(journey))));
     updateLog("%s ✓ Published %d journey entries in %dms.", getTimestamp(), journeys.length, watch.total());
   } catch (e) {
-    updateLog("%s ✘ Something wrong occurred while computing/publishing: '%s'.", e instanceof Error ? e.message : e);
+    updateLog("%s ✘ Something wrong occurred while publishing journeys.", getTimestamp());
+    console.error(e);
   }
   console.log();
+  setTimeout(computeAndPublish, configuration.computeCron.total("milliseconds"));
 }
 
-computeAndPublish();
-setInterval(computeAndPublish, Temporal.Duration.from({ seconds: 15 }).total("milliseconds"));
+// computeAndPublish();

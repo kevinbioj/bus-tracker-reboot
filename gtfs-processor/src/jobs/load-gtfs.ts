@@ -28,7 +28,7 @@ export async function loadGtfs(source: Source, bootstrapping = true) {
 
     updateLog("%s ► Loading GTFS resource from '%s' into memory.", sourceId, resourceDirectory);
     const gtfs: Gtfs = {
-      ...(await importGtfs(resourceDirectory, source.excludeRoute)),
+      ...(await importGtfs(resourceDirectory, source.gtfsOptions)),
       ...(await getStaleness(source.staticResourceHref).catch(() => ({ lastModified: null, etag: null }))),
       importedAt: Temporal.Now.instant(),
     };
@@ -73,6 +73,6 @@ export async function loadGtfs(source: Source, bootstrapping = true) {
       gtfs.journeys.length,
     );
   } catch (e) {
-    updateLog("%s ✘ Load failed: '%s'.", e instanceof Error ? e.message : e);
+    updateLog("%s ✘ Load failed: '%s'.", sourceId, e instanceof Error ? e.message : e);
   }
 }

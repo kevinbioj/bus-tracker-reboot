@@ -10,5 +10,6 @@ export class StopTime {
     readonly arrivalModulus: number,
     readonly departureTime?: Temporal.PlainTime,
     readonly departureModulus?: number,
+    readonly distanceTraveled?: number,
   ) {}
 }

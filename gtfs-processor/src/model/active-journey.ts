@@ -1,5 +1,6 @@
 import type { Temporal } from "temporal-polyfill";
 
+import type { JourneyPosition } from "./journey.js";
 import type { RouteType } from "./route.js";
 
 export type ActiveJourney = {
@@ -15,12 +16,7 @@ export type ActiveJourney = {
     stopOrder: number;
     callStatus: "SCHEDULED" | "SKIPPED";
   }>;
-  position: {
-    latitude: number;
-    longitude: number;
-    type: "GPS" | "COMPUTED";
-    recordedAt: Temporal.Instant;
-  };
+  position: JourneyPosition;
   networkRef: string;
   journeyRef?: string;
   datedJourneyRef?: string;

@@ -1,12 +1,14 @@
 import type { RedisClientOptions } from "redis";
+import type { Temporal } from "temporal-polyfill";
 
-import type { RouteRecord } from "./import/import-gtfs.js";
+import type { ImportGtfsOptions } from "./import/import-gtfs.js";
 import type { TripUpdate, VehicleDescriptor, VehiclePosition } from "./model/gtfs-rt.js";
 import type { Gtfs } from "./model/gtfs.js";
 import type { Journey } from "./model/journey.js";
 import type { Trip } from "./model/trip.js";
 
 export type Configuration = {
+  computeCron: Temporal.Duration;
   redisOptions: RedisClientOptions;
   sources: Source[];
 };
@@ -16,8 +18,7 @@ export type Source = {
   // --- Data provisioning
   staticResourceHref: string;
   realtimeResourceHrefs?: string[];
-  // --- Optional data filtering
-  excludeRoute?: (route: RouteRecord) => boolean;
+  gtfsOptions?: ImportGtfsOptions;
   // --- Additional data acquirance
   allowScheduled?: (trip: Trip) => boolean;
   getAheadTime?: (journey?: Journey) => number;

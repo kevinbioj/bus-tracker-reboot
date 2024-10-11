@@ -12,9 +12,9 @@ export async function downloadGtfsRt(
   const tripUpdates: TripUpdate[] = [];
   const vehiclePositions: VehiclePosition[] = [];
 
-  await Promise.allSettled(
+  await Promise.all(
     realtimeFeedHrefs.map(async (realtimeFeedHref) => {
-      const response = await fetch(realtimeFeedHref, { signal: AbortSignal.timeout(30_000) });
+      const response = await fetch(realtimeFeedHref, { signal: AbortSignal.timeout(5_000) });
 
       if (!response.ok)
         throw new Error(`Failed to download feed at '${realtimeFeedHref}' (status ${response.status}).`);

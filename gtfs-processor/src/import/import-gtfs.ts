@@ -5,20 +5,29 @@ import { createPlainDate, createPlainTime } from "../cache/temporal-cache.js";
 import { Agency } from "../model/agency.js";
 import { Route, routeTypes } from "../model/route.js";
 import { Service } from "../model/service.js";
+import { Shape } from "../model/shape.js";
 import { StopTime } from "../model/stop-time.js";
 import { Stop } from "../model/stop.js";
 import { Trip } from "../model/trip.js";
 import { type CsvRecord, readCsv } from "../utils/csv-reader.js";
 import { fileExists } from "../utils/file-exists.js";
 
-export async function importGtfs(gtfsDirectory: string, excludeRoute?: (route: RouteRecord) => boolean) {
-  const [agencies, services, stops] = await Promise.all([
+export type LoadShapesStrategy = "LOAD-IF-EXISTS" | "IGNORE";
+
+export type ImportGtfsOptions = {
+  excludeRoute?: (route: RouteRecord) => boolean;
+  shapesStrategy?: LoadShapesStrategy;
+};
+
+export async function importGtfs(gtfsDirectory: string, options: ImportGtfsOptions = {}) {
+  const [agencies, services, shapes, stops] = await Promise.all([
     importAgencies(gtfsDirectory),
     importServices(gtfsDirectory),
+    importShapes(gtfsDirectory, options.shapesStrategy),
     importStops(gtfsDirectory),
   ]);
-  const routes = await importRoutes(gtfsDirectory, agencies, excludeRoute);
-  const trips = await importTrips(gtfsDirectory, routes, services, stops);
+  const routes = await importRoutes(gtfsDirectory, agencies, options.excludeRoute);
+  const trips = await importTrips(gtfsDirectory, routes, services, shapes, stops);
   return { agencies, routes, services, stops, trips, journeys: [] };
 }
 
@@ -160,13 +169,55 @@ async function importRoutes(
   return routes;
 }
 
-type TripRecord = CsvRecord<"trip_id" | "route_id" | "service_id" | "direction_id", "trip_headsign" | "block_id">;
-type StopTimeRecord = CsvRecord<"trip_id" | "arrival_time" | "departure_time" | "stop_sequence" | "stop_id">;
+type ShapeRecord = CsvRecord<"shape_id" | "shape_pt_lat" | "shape_pt_lon" | "shape_pt_sequence", "shape_dist_traveled">;
+
+async function importShapes(gtfsDirectory: string, strategy: LoadShapesStrategy = "LOAD-IF-EXISTS") {
+  const shapes = new Map<string, Shape>();
+  if (strategy === "IGNORE") return shapes;
+
+  const shapesFile = join(gtfsDirectory, "shapes.txt");
+  if (await fileExists(shapesFile)) {
+    await readCsv<ShapeRecord>(shapesFile, (shapeRecord) => {
+      if (typeof shapeRecord.shape_dist_traveled === "undefined") {
+        return;
+      }
+
+      let shape = shapes.get(shapeRecord.shape_id);
+      if (typeof shape === "undefined") {
+        shape = new Shape(shapeRecord.shape_id, []);
+        shapes.set(shapeRecord.shape_id, shape);
+      }
+
+      shape.points.push({
+        sequence: +shapeRecord.shape_pt_sequence,
+        latitude: +shapeRecord.shape_pt_lat,
+        longitude: +shapeRecord.shape_pt_lon,
+        distanceTraveled: +shapeRecord.shape_dist_traveled,
+      });
+    });
+  }
+
+  for (const shape of shapes.values()) {
+    shape.points.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  return shapes;
+}
+
+type TripRecord = CsvRecord<
+  "trip_id" | "route_id" | "service_id" | "direction_id",
+  "trip_headsign" | "block_id" | "shape_id"
+>;
+type StopTimeRecord = CsvRecord<
+  "trip_id" | "arrival_time" | "departure_time" | "stop_sequence" | "stop_id",
+  "shape_dist_traveled"
+>;
 
 async function importTrips(
   gtfsDirectory: string,
   routes: Map<string, Route>,
   services: Map<string, Service>,
+  shapes: Map<string, Shape>,
   stops: Map<string, Stop>,
 ) {
   const trips = new Map<string, Trip>();
@@ -192,6 +243,7 @@ async function importTrips(
       +tripRecord.direction_id as 0 | 1,
       tripRecord.trip_headsign || undefined,
       tripRecord.block_id || undefined,
+      typeof tripRecord.shape_id !== "undefined" ? shapes.get(tripRecord.shape_id) : undefined,
     );
 
     trips.set(trip.id, trip);
@@ -230,6 +282,7 @@ async function importTrips(
           )
         : undefined,
       mismatchingTimes ? Math.floor(departureHours / 24) : undefined,
+      typeof stopTimeRecord.shape_dist_traveled !== "undefined" ? +stopTimeRecord.shape_dist_traveled : undefined,
     );
 
     trip.stopTimes.push(stopTime);
