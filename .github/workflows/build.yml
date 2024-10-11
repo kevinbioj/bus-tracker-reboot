@@ -1,0 +1,25 @@
+name: Build
+on:
+  push:
+jobs:
+  build:
+    name: Build - ${{ matrix.projectBaseDir }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        projectBaseDir: [gtfs-processor]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cache Node modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install dependencies
+        run: npm --prefix ${{ matrix.projectBaseDir }} ci
+      - name: Build project
+        run: npm --prefix ${{ matrix.projectBaseDir }} run build

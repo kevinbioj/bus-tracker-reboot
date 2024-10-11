@@ -7,7 +7,7 @@ on:
     types: [opened, synchronize, reopened]
 jobs:
   sonarcloud:
-    name: SonarCloud
+    name: SonarCloud - ${{ matrix.projectBaseDir }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
