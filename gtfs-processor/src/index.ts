@@ -86,4 +86,4 @@ async function computeAndPublish() {
   setTimeout(computeAndPublish, configuration.computeCron.total("milliseconds"));
 }
 
-// computeAndPublish();
+computeAndPublish();
