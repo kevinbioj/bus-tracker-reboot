@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        projectBaseDir: [gtfs-processor]
+        projectBaseDir: [gtfs-processor, server]
     steps:
       - uses: actions/checkout@v4
         with:
