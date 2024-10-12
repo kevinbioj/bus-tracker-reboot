@@ -178,6 +178,7 @@ const sources = [
     ],
     gtfsOptions: { shapesStrategy: "IGNORE" },
     allowScheduled: () => false,
+    getNetworkRef: () => "FICIBUS",
   },
   //- MOCA
   {
