@@ -8,7 +8,7 @@ import type { Journey } from "./model/journey.js";
 import type { Trip } from "./model/trip.js";
 
 export type Configuration = {
-  computeCron: Temporal.Duration;
+  computeInterval: Temporal.Duration;
   redisOptions: RedisClientOptions;
   sources: Source[];
 };

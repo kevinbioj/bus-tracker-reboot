@@ -75,4 +75,6 @@ export async function loadGtfs(source: Source, bootstrapping = true) {
   } catch (e) {
     updateLog("%s ✘ Load failed: '%s'.", sourceId, e instanceof Error ? e.message : e);
   }
+
+  global.gc?.();
 }

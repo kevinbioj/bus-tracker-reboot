@@ -12,12 +12,13 @@ const sources = [
     ],
     getNetworkRef: () => "TBM",
     getOperatorRef: () => "KBDX",
+    getVehicleRef: (vehicle) => vehicle?.id.split(":")[1],
   },
 ];
 
 /** @type {import('../src/configuration').Configuration} */
 const configuration = {
-  computeCron: Temporal.Duration.from({ seconds: 10 }),
+  computeInterval: Temporal.Duration.from({ seconds: 10 }),
   redisOptions: {
     url: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
     username: process.env.REDIS_USERNAME,

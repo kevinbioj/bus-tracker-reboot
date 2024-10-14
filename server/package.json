@@ -4,24 +4,33 @@
   "version": "0.1.0",
   "author": "Kevin BIOJOUT <biojoutk1106@gmail.com>",
   "license": "GPL-3.0-only",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
     "lint": "eslint src",
     "lint:fix": "eslint --fix src",
     "format": "prettier --config .prettierrc --write src",
-    "start": "node --enable-source-maps ."
+    "start": "node --env-file .env --enable-source-maps ."
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
-    "@types/node": "^22.7.4",
+    "@types/node": "^22.7.5",
+    "drizzle-kit": "^0.25.0",
     "eslint": "^9.11.1",
     "globals": "^15.10.0",
     "prettier": "^3.3.3",
     "typescript": "^5.6.2",
     "typescript-eslint": "^8.8.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@hono/node-server": "^1.13.2",
+    "drizzle-orm": "^0.34.1",
+    "hono": "^4.6.4",
+    "p-limit": "^6.1.0",
+    "postgres": "^3.4.4",
+    "redis": "^4.7.0",
+    "temporal-polyfill": "^0.2.5"
+  }
 }

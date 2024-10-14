@@ -3,10 +3,10 @@ import { Temporal } from "temporal-polyfill";
 import { createPlainDate } from "../cache/temporal-cache.js";
 import type { Source } from "../configuration.js";
 import { downloadGtfsRt } from "../download/download-gtfs-rt.js";
-import type { ActiveJourney } from "../model/active-journey.js";
 import type { TripDescriptor } from "../model/gtfs-rt.js";
 import type { Journey } from "../model/journey.js";
 import type { Trip } from "../model/trip.js";
+import type { VehicleJourney } from "../types/vehicle-journey.js";
 import { padSourceId } from "../utils/pad-source-id.js";
 import { createStopWatch } from "../utils/stop-watch.js";
 
@@ -40,7 +40,7 @@ const getCalls = (journey: Journey, at: Temporal.Instant, getAheadTime?: (journe
   return ongoingCalls;
 };
 
-export async function computeActiveJourneys(source: Source) {
+export async function computeVehicleJourneys(source: Source) {
   if (typeof source.gtfs === "undefined") return [];
 
   const now = Temporal.Now.instant();
@@ -58,7 +58,7 @@ export async function computeActiveJourneys(source: Source) {
     const downloadTime = watch.step();
 
     updateLog("%s ► Computing active journeys.", sourceId);
-    const activeJourneys = new Map<string, ActiveJourney>();
+    const activeJourneys = new Map<string, VehicleJourney>();
     const handledJourneyIds = new Set<string>();
     const handledBlockIds = new Set<string>();
 
@@ -125,9 +125,11 @@ export async function computeActiveJourneys(source: Source) {
         ...(typeof journey !== "undefined"
           ? {
               line: {
-                id: `${source.getNetworkRef(journey)}:Line:${journey.trip.route.id}`,
+                ref: `${source.getNetworkRef(journey)}:Line:${journey.trip.route.id}`,
                 number: journey.trip.route.name,
                 type: journey.trip.route.type,
+                color: journey.trip.route.color,
+                textColor: journey.trip.route.textColor,
               },
               direction: journey.trip.direction === 0 ? "OUTBOUND" : "INBOUND",
               destination: journey.trip.headsign,
@@ -157,7 +159,7 @@ export async function computeActiveJourneys(source: Source) {
         datedJourneyRef: journey?.id,
         operatorRef,
         vehicleRef,
-        updatedAt: Temporal.Now.instant(),
+        updatedAt: now,
       });
     }
 
@@ -186,9 +188,11 @@ export async function computeActiveJourneys(source: Source) {
       activeJourneys.set(key, {
         id: key,
         line: {
-          id: `${source.getNetworkRef(journey, vehicleDescriptor)}:Line:${journey.trip.route.id}`,
+          ref: `${source.getNetworkRef(journey, vehicleDescriptor)}:Line:${journey.trip.route.id}`,
           number: journey.trip.route.name,
           type: journey.trip.route.type,
+          color: journey.trip.route.color,
+          textColor: journey.trip.route.textColor,
         },
         direction: journey.trip.direction === 0 ? "OUTBOUND" : "INBOUND",
         destination: journey.trip.headsign,

@@ -11,7 +11,7 @@
     "lint": "eslint src",
     "lint:fix": "eslint --fix src",
     "format": "prettier --config .prettierrc --write src",
-    "start": "node --enable-source-maps ."
+    "start": "node --enable-source-maps --expose-gc ."
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
