@@ -4,6 +4,7 @@ import { compress } from "hono/compress";
 import { createClient } from "redis";
 import { Temporal } from "temporal-polyfill";
 
+import { registerActivity } from "./functions/register-activity.js";
 import { createJourneyStore } from "./store/journey-store.js";
 import type { VehicleJourney } from "./types/vehicle-journey.js";
 
@@ -25,6 +26,7 @@ redis.subscribe("journeys", async (message) => {
   const timeSince = Temporal.Now.instant().since(vehicleJourney.updatedAt);
   if (timeSince.total("minutes") >= 10) return;
 
+  registerActivity(vehicleJourney);
   journeyStore.set(vehicleJourney.id, vehicleJourney);
 });
 

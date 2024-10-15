@@ -14,19 +14,14 @@ import { createStopWatch } from "../utils/stop-watch.js";
 export async function loadGtfs(source: Source, bootstrapping = true) {
   const watch = createStopWatch();
   const sourceId = padSourceId(source);
-  const updateLog = console.draft("%s ► Loading GTFS resource...", sourceId);
+  const updateLog = console.draft("%s     ► Loading GTFS resource...", sourceId);
 
   try {
     const resourceDirectory = await mkdtemp(join(tmpdir(), `bt-gtfs_${source.id}_`));
-    updateLog(
-      "%s ► Downloading GTFS resource from '%s' into '%s'.",
-      sourceId,
-      source.staticResourceHref,
-      resourceDirectory,
-    );
+    updateLog("%s 1/2 ► Downloading GTFS resource into temporary directory...", sourceId);
     await downloadGtfs(source.staticResourceHref, resourceDirectory);
 
-    updateLog("%s ► Loading GTFS resource from '%s' into memory.", sourceId, resourceDirectory);
+    updateLog("%s 2/2 ► Loading GTFS resource contents into memory...", sourceId);
     const gtfs: Gtfs = {
       ...(await importGtfs(resourceDirectory, source.gtfsOptions)),
       ...(await getStaleness(source.staticResourceHref).catch(() => ({ lastModified: null, etag: null }))),
@@ -67,14 +62,13 @@ export async function loadGtfs(source: Source, bootstrapping = true) {
 
     source.gtfs = gtfs;
     updateLog(
-      "%s ✓ Load complete in %dms - %d oncoming journeys computed\n",
+      "%s     ✓ Resource loaded in %dms - %d journeys were pre-computed.\n",
       sourceId,
       watch.total(),
       gtfs.journeys.length,
     );
-  } catch (e) {
-    updateLog("%s ✘ Load failed: '%s'.", sourceId, e instanceof Error ? e.message : e);
+  } catch (cause) {
+    updateLog("%s     ✘ Something wrong occurred while loading the resource.", sourceId);
+    throw new Error(`Failed to load GTFS resource for '${source.id}'.`, { cause });
   }
-
-  global.gc?.();
 }

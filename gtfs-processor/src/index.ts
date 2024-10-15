@@ -41,7 +41,14 @@ const initLimit = 4;
 const initLimitFn = pLimit(initLimit);
 const initWatch = createStopWatch();
 console.log("%s ► Loading resources (concurrency limit: %d).", getTimestamp(), initLimit);
-await Promise.all(configuration.sources.map((source) => initLimitFn(() => loadGtfs(source))));
+const results = await Promise.allSettled(configuration.sources.map((source) => initLimitFn(() => loadGtfs(source))));
+results
+  .filter((result) => result.status === "rejected")
+  .forEach((result) => {
+    console.log();
+    console.error(result.reason);
+    console.log();
+  });
 console.log("✓ Load complete in %dms.\n", initWatch.total());
 
 // C'est moche mais je n'ai pas le temps de l'attendre moi-même...
@@ -52,9 +59,16 @@ setInterval(
   async () => {
     console.log("%s ► Checking resources staleness.", getTimestamp());
     for (const source of configuration.sources) {
-      await updateGtfs(source);
+      try {
+        await updateGtfs(source);
+      } catch (e) {
+        console.log();
+        console.error(e);
+        console.log();
+      }
     }
     console.log();
+    global.gc?.();
   },
   Temporal.Duration.from({ minutes: 5 }).total("milliseconds"),
 );
@@ -64,6 +78,7 @@ setInterval(
     console.log("%s ► Sweeping outdated journey entries.", getTimestamp());
     configuration.sources.forEach(sweepJourneys);
     console.log();
+    global.gc?.();
   },
   Temporal.Duration.from({ hours: 1 }).total("milliseconds"),
 );
@@ -77,18 +92,32 @@ async function computeAndPublish() {
   const computeLimitFn = pLimit(computeLimit);
   const updateLog = console.draft("%s ► Computing vehicle journeys to publish.", getTimestamp());
   try {
-    const journeys = (
-      await Promise.all(configuration.sources.map((source) => computeLimitFn(() => computeVehicleJourneys(source))))
-    ).flat();
-    updateLog("%s ► Publishing %d vehicle journey entries.", getTimestamp(), journeys.length);
-    await Promise.all(journeys.map((journey) => redis.publish(channel, JSON.stringify(journey))));
-    updateLog("%s ✓ Published %d vehicle journey entries in %dms.", getTimestamp(), journeys.length, watch.total());
+    const computationResults = await Promise.allSettled(
+      configuration.sources.map((source) => computeLimitFn(() => computeVehicleJourneys(source))),
+    );
+    const vehicleJourneys = computationResults
+      .filter((result) => result.status === "fulfilled")
+      .flatMap((result) => result.value);
+    const failures = computationResults.filter((result) => result.status === "rejected").map((result) => result.reason);
+    updateLog("%s ► Publishing %d vehicle journey entries.", getTimestamp(), vehicleJourneys.length);
+    await Promise.all(vehicleJourneys.map((vehicleJourney) => redis.publish(channel, JSON.stringify(vehicleJourney))));
+    updateLog(
+      "%s ✓ Published %d vehicle journey entries in %dms.",
+      getTimestamp(),
+      vehicleJourneys.length,
+      watch.total(),
+    );
+    failures.forEach((failure) => {
+      console.log();
+      console.error(failure);
+      console.log();
+    });
   } catch (e) {
     updateLog("%s ✘ Something wrong occurred while publishing vehicle journeys.", getTimestamp());
     console.error(e);
   }
   console.log();
-  global.gc?.({ execution: "sync" });
+  global.gc?.();
   isComputing = false;
 }
 

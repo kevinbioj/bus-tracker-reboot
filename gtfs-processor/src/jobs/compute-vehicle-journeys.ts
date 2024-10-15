@@ -46,10 +46,10 @@ export async function computeVehicleJourneys(source: Source) {
   const now = Temporal.Now.instant();
   const watch = createStopWatch();
   const sourceId = padSourceId(source);
-  const updateLog = console.draft(`%s ► Generating active journeys list.`, sourceId);
+  const updateLog = console.draft(`%s     ► Generating active journeys list.`, sourceId);
 
   try {
-    updateLog("%s ► Downloading real-time data from feeds.", sourceId);
+    updateLog("%s 1/2 ► Downloading real-time data from feeds.", sourceId);
     const { tripUpdates, vehiclePositions } = await downloadGtfsRt(
       source.realtimeResourceHrefs ?? [],
       source.mapTripUpdate,
@@ -57,7 +57,7 @@ export async function computeVehicleJourneys(source: Source) {
     );
     const downloadTime = watch.step();
 
-    updateLog("%s ► Computing active journeys.", sourceId);
+    updateLog("%s 2/2 ► Computing active journeys.", sourceId);
     const activeJourneys = new Map<string, VehicleJourney>();
     const handledJourneyIds = new Set<string>();
     const handledBlockIds = new Set<string>();
@@ -219,7 +219,7 @@ export async function computeVehicleJourneys(source: Source) {
 
     const computeTime = watch.step();
     updateLog(
-      "%s ✓ Computed %d journeys in %dms (%dms download - %dms compute).",
+      "%s     ✓ Computed %d journeys in %dms (%dms download - %dms compute).",
       sourceId,
       activeJourneys.size,
       watch.total(),
@@ -227,8 +227,8 @@ export async function computeVehicleJourneys(source: Source) {
       computeTime,
     );
     return Array.from(activeJourneys.values());
-  } catch (e) {
-    updateLog("%s ✘ Something wrong occurred during computation: '%s'", sourceId, e instanceof Error ? e.message : e);
-    return [];
+  } catch (cause) {
+    updateLog("%s     ✘ Something wrong occurred during computation.", sourceId);
+    throw new Error(`Failed to compute vehicle journeys for '${source.id}'.`, { cause });
   }
 }

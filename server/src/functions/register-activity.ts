@@ -1,17 +1,18 @@
 import pLimit from "p-limit";
 
+import { importVehicle } from "../import/import-vehicle.js";
 import type { VehicleJourney } from "../types/vehicle-journey.js";
-
-// import { importLine } from "../import/import-line.js";
 
 const registerFn = pLimit(1);
 
-export const registerActivity = (journey: VehicleJourney) => registerFn(() => _registerActivity(journey));
+export function registerActivity(journey: VehicleJourney) {
+  return registerFn(() => _registerActivity(journey));
+}
 
 async function _registerActivity(journey: VehicleJourney) {
-  if (typeof journey.line === "undefined") return;
+  if (typeof journey.line === "undefined" || typeof journey.vehicleRef === "undefined") return;
 
-  // const line = await importLine(journey.networkRef, journey.line);
+  await importVehicle(journey.networkRef, journey.vehicleRef, journey.operatorRef);
 
   return void 0;
 }

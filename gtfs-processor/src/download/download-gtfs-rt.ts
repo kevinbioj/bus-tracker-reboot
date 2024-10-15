@@ -1,4 +1,5 @@
 import GtfsRealtimeBindings from "gtfs-realtime-bindings";
+import { Buffer } from "node:buffer";
 
 import type { GtfsRtEntity, TripUpdate, VehiclePosition } from "../model/gtfs-rt.js";
 
