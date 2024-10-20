@@ -15,6 +15,9 @@ export type Network = InferSelectModel<typeof networks>;
 
 export const operators = pgTable("operator", {
   id: serial("id").primaryKey(),
+  networkId: integer("network_id")
+    .notNull()
+    .references(() => networks.id),
   ref: varchar("ref").notNull().unique(),
   name: varchar("name").notNull(),
   logoHref: varchar("logo_href"),

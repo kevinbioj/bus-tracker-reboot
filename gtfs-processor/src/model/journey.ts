@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { TripUpdate } from "./gtfs-rt.js";
+import type { StopTimeUpdate } from "./gtfs-rt.js";
 import type { Stop } from "./stop.js";
 import type { Trip } from "./trip.js";
 
@@ -84,12 +84,12 @@ export class Journey {
     };
   }
 
-  setTripUpdate(tripUpdate: TripUpdate) {
+  updateJourney(stopTimeUpdates: StopTimeUpdate[]) {
     let arrivalDelay: number | undefined;
     let departureDelay: number | undefined;
 
     for (const call of this.calls) {
-      const timeUpdate = tripUpdate.stopTimeUpdate?.find(
+      const timeUpdate = stopTimeUpdates?.find(
         (stu) => stu.stopSequence === call.sequence || stu.stopId === call.stop.id,
       );
 

@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS "network" (
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "operator" (
 	"id" serial PRIMARY KEY NOT NULL,
+	"network_id" integer NOT NULL,
 	"ref" varchar NOT NULL,
 	"name" varchar NOT NULL,
 	"logo_href" varchar,
@@ -61,6 +62,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "line" ADD CONSTRAINT "line_network_id_network_id_fk" FOREIGN KEY ("network_id") REFERENCES "public"."network"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "operator" ADD CONSTRAINT "operator_network_id_network_id_fk" FOREIGN KEY ("network_id") REFERENCES "public"."network"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;

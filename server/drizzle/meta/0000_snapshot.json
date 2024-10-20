@@ -1,5 +1,5 @@
 {
-  "id": "70b58b3d-894f-489e-b643-ffec38cc3ee3",
+  "id": "182de530-66b7-4944-9889-a80ba1bda989",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -219,6 +219,12 @@
           "primaryKey": true,
           "notNull": true
         },
+        "network_id": {
+          "name": "network_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "ref": {
           "name": "ref",
           "type": "varchar",
@@ -239,7 +245,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "operator_network_id_network_id_fk": {
+          "name": "operator_network_id_network_id_fk",
+          "tableFrom": "operator",
+          "tableTo": "network",
+          "columnsFrom": [
+            "network_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "operator_ref_unique": {

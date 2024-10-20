@@ -23,11 +23,11 @@ export async function importGtfs(gtfsDirectory: string, options: ImportGtfsOptio
   const [agencies, services, shapes, stops] = await Promise.all([
     importAgencies(gtfsDirectory),
     importServices(gtfsDirectory),
-    importShapes(gtfsDirectory, options.shapesStrategy),
+    importShapes(gtfsDirectory, options),
     importStops(gtfsDirectory),
   ]);
-  const routes = await importRoutes(gtfsDirectory, agencies, options.excludeRoute);
-  const trips = await importTrips(gtfsDirectory, routes, services, shapes, stops);
+  const routes = await importRoutes(gtfsDirectory, options, agencies);
+  const trips = await importTrips(gtfsDirectory, options, routes, services, shapes, stops);
   return { agencies, routes, services, stops, trips, journeys: [] };
 }
 
@@ -139,15 +139,11 @@ export type RouteRecord = CsvRecord<
   "route_color" | "route_text_color"
 >;
 
-async function importRoutes(
-  gtfsDirectory: string,
-  agencies: Map<string, Agency>,
-  excludeRoute?: (route: RouteRecord) => boolean,
-) {
+async function importRoutes(gtfsDirectory: string, options: ImportGtfsOptions, agencies: Map<string, Agency>) {
   const routes = new Map<string, Route>();
 
   await readCsv<RouteRecord>(join(gtfsDirectory, "routes.txt"), (routeRecord) => {
-    if (excludeRoute?.(routeRecord)) return;
+    if (options.excludeRoute?.(routeRecord)) return;
 
     const agency = agencies.get(routeRecord.agency_id);
     if (typeof agency === "undefined") {
@@ -171,9 +167,9 @@ async function importRoutes(
 
 type ShapeRecord = CsvRecord<"shape_id" | "shape_pt_lat" | "shape_pt_lon" | "shape_pt_sequence", "shape_dist_traveled">;
 
-async function importShapes(gtfsDirectory: string, strategy: LoadShapesStrategy = "LOAD-IF-EXISTS") {
+async function importShapes(gtfsDirectory: string, options: ImportGtfsOptions) {
   const shapes = new Map<string, Shape>();
-  if (strategy === "IGNORE") return shapes;
+  if (options.shapesStrategy === "IGNORE") return shapes;
 
   const shapesFile = join(gtfsDirectory, "shapes.txt");
   if (await fileExists(shapesFile)) {
@@ -215,6 +211,7 @@ type StopTimeRecord = CsvRecord<
 
 async function importTrips(
   gtfsDirectory: string,
+  options: ImportGtfsOptions,
   routes: Map<string, Route>,
   services: Map<string, Service>,
   shapes: Map<string, Shape>,

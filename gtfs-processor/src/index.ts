@@ -1,3 +1,4 @@
+import { Cron } from "croner";
 import DraftLog from "draftlog";
 import pLimit from "p-limit";
 import { createClient } from "redis";
@@ -8,6 +9,8 @@ import { computeVehicleJourneys } from "./jobs/compute-vehicle-journeys.js";
 import { loadGtfs } from "./jobs/load-gtfs.js";
 import { sweepJourneys } from "./jobs/sweep-vehicle-journeys.js";
 import { updateGtfs } from "./jobs/update-gtfs.js";
+import type { Journey } from "./model/journey.js";
+import { padSourceId } from "./utils/pad-source-id.js";
 import { createStopWatch } from "./utils/stop-watch.js";
 
 DraftLog(console, !process.stdout.isTTY)?.addLineListener(process.stdin);
@@ -82,6 +85,36 @@ setInterval(
   },
   Temporal.Duration.from({ hours: 1 }).total("milliseconds"),
 );
+
+new Cron("0 0 0 * * *", () => {
+  console.log("%s ► Computing journeys for the next day.", getTimestamp());
+  for (const source of configuration.sources) {
+    const sourceId = padSourceId(source);
+    if (typeof source.gtfs === "undefined") {
+      return console.warn("%s ⚠ Source has no loaded GTFS data, ignoring.", sourceId);
+    }
+
+    const date = Temporal.Now.plainDateISO();
+
+    const updateLog = console.draft("%s ► Computing journeys for date '%s'.", sourceId, date);
+    const watch = createStopWatch();
+
+    let computedJourneys = 0;
+    for (const trip of source.gtfs.trips.values()) {
+      const journey = trip.getScheduledJourney(date);
+      if (typeof journey !== "undefined") {
+        source.gtfs.journeys.push(journey);
+        computedJourneys += 1;
+      }
+    }
+    source.gtfs.journeys.sort((a, b) =>
+      Temporal.ZonedDateTime.compare(a.calls.at(0)!.aimedArrivalTime, b.calls.at(0)!.aimedArrivalTime),
+    );
+
+    updateLog("%s ✓ Computed %d journeys for date '%s' in %dms.", sourceId, computedJourneys, date, watch.total());
+  }
+  console.log();
+});
 
 let isComputing = false;
 async function computeAndPublish() {

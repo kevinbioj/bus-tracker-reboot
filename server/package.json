@@ -17,6 +17,7 @@
     "@eslint/js": "^9.11.1",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/node": "^22.7.5",
+    "@types/pg": "^8.11.10",
     "drizzle-kit": "^0.25.0",
     "eslint": "^9.11.1",
     "globals": "^15.10.0",
@@ -29,6 +30,7 @@
     "drizzle-orm": "^0.34.1",
     "hono": "^4.6.4",
     "p-limit": "^6.1.0",
+    "pg": "^8.13.0",
     "postgres": "^3.4.4",
     "redis": "^4.7.0",
     "temporal-polyfill": "^0.2.5"

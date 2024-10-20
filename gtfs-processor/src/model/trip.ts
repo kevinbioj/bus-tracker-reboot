@@ -31,6 +31,8 @@ export class Trip {
     readonly shape?: Shape,
   ) {}
 
+  getScheduledJourney(date: Temporal.PlainDate, force: true): Journey;
+  getScheduledJourney(date: Temporal.PlainDate, force?: false): Journey | undefined;
   getScheduledJourney(date: Temporal.PlainDate, force = false) {
     if (!force && !this.service.runsOn(date)) return;
 

@@ -1,29 +1,14 @@
 import { Temporal } from "temporal-polyfill";
 
-import { createPlainDate } from "../cache/temporal-cache.js";
 import type { Source } from "../configuration.js";
 import { downloadGtfsRt } from "../download/download-gtfs-rt.js";
 import type { TripDescriptor } from "../model/gtfs-rt.js";
+import type { Gtfs } from "../model/gtfs.js";
 import type { Journey } from "../model/journey.js";
-import type { Trip } from "../model/trip.js";
 import type { VehicleJourney } from "../types/vehicle-journey.js";
+import { guessStartDate } from "../utils/guess-start-date.js";
 import { padSourceId } from "../utils/pad-source-id.js";
 import { createStopWatch } from "../utils/stop-watch.js";
-
-const matchTripAndTripUpdate = (trip: Trip, tripDescriptor: TripDescriptor) => {
-  if (tripDescriptor.tripId !== trip.id) return false;
-  if (typeof tripDescriptor.routeId !== "undefined" && tripDescriptor.routeId !== trip.route.id) return false;
-  if (typeof tripDescriptor.directionId !== "undefined" && tripDescriptor.directionId !== trip.direction) return false;
-  return true;
-};
-
-const matchJourneyAndTripUpdate = (journey: Journey, trip: TripDescriptor) => {
-  if (trip.tripId !== journey.trip.id) return false;
-  if (typeof trip.routeId !== "undefined" && trip.routeId !== journey.trip.route.id) return false;
-  if (typeof trip.directionId !== "undefined" && trip.directionId !== journey.trip.direction) return false;
-  if (typeof trip.startDate !== "undefined" && !createPlainDate(trip.startDate).equals(journey.date)) return false;
-  return true;
-};
 
 const getCalls = (journey: Journey, at: Temporal.Instant, getAheadTime?: (journey: Journey) => number) => {
   const atWithMargin = at.add({ seconds: getAheadTime?.(journey) ?? 0 });
@@ -38,6 +23,24 @@ const getCalls = (journey: Journey, at: Temporal.Instant, getAheadTime?: (journe
   });
   if (ongoingCalls.length === 0) return;
   return ongoingCalls;
+};
+
+const getTripFromDescriptor = (gtfs: Gtfs, tripDescriptor: TripDescriptor) => {
+  const trip = gtfs.trips.get(tripDescriptor.tripId);
+  if (typeof trip === "undefined") return;
+
+  if (typeof tripDescriptor.routeId !== "undefined" && trip.route.id !== tripDescriptor.routeId) return;
+  if (typeof tripDescriptor.directionId !== "undefined" && trip.direction !== tripDescriptor.directionId) return;
+  return trip;
+};
+
+const matchJourneyToTripDescriptor = (journey: Journey, tripDescriptor: TripDescriptor) => {
+  if (journey.trip.id !== tripDescriptor.tripId) return false;
+  if (typeof tripDescriptor.routeId !== "undefined" && journey.trip.route.id !== tripDescriptor.routeId) return false;
+  if (typeof tripDescriptor.directionId !== "undefined" && journey.trip.direction !== tripDescriptor.directionId)
+    return false;
+  if (typeof tripDescriptor.startDate !== "undefined" && !journey.date.equals(tripDescriptor.startDate)) return false;
+  return true;
 };
 
 export async function computeVehicleJourneys(source: Source) {
@@ -63,36 +66,58 @@ export async function computeVehicleJourneys(source: Source) {
     const handledBlockIds = new Set<string>();
 
     for (const tripUpdate of tripUpdates) {
-      if (now.since(Temporal.Instant.fromEpochSeconds(tripUpdate.timestamp)).total("minutes") >= 10) continue;
+      if (tripUpdate.trip.scheduleRelationship === "CANCELED") continue;
 
-      let journey = source.gtfs.journeys.find((journey) => matchJourneyAndTripUpdate(journey, tripUpdate.trip));
+      const updatedAt = Temporal.Instant.fromEpochSeconds(tripUpdate.timestamp);
+      if (now.since(updatedAt).total("minutes") >= 10) continue;
+
+      const trip = getTripFromDescriptor(source.gtfs, tripUpdate.trip);
+      if (typeof trip === "undefined") continue;
+      const firstStopTime = trip.stopTimes.at(0)!;
+
+      const startDate =
+        typeof tripUpdate.trip.startDate !== "undefined"
+          ? Temporal.PlainDate.from(tripUpdate.trip.startDate)
+          : guessStartDate(
+              firstStopTime.arrivalTime,
+              firstStopTime.arrivalModulus,
+              updatedAt.toZonedDateTimeISO(trip.route.agency.timeZone),
+            );
+
+      let journey = source.gtfs.journeys.find((journey) => journey.date.equals(startDate) && journey.trip === trip);
       if (typeof journey === "undefined") {
-        const trip =
-          source.gtfs.trips.get(tripUpdate.trip.tripId) ??
-          Array.from(source.gtfs.trips.values()).find((t) => matchTripAndTripUpdate(t, tripUpdate.trip));
-        if (typeof trip !== "undefined") {
-          journey = trip.getScheduledJourney(
-            typeof tripUpdate.trip.startDate !== "undefined"
-              ? Temporal.PlainDate.from(tripUpdate.trip.startDate)
-              : Temporal.Now.plainDateISO(),
-            true,
-          );
-          if (typeof journey !== "undefined") {
-            source.gtfs.journeys.push(journey);
-          }
-        }
+        journey = trip.getScheduledJourney(startDate, true);
+        source.gtfs.journeys.push(journey);
       }
-      if (typeof journey !== "undefined") {
-        journey.setTripUpdate(tripUpdate);
-      }
+      journey.updateJourney(tripUpdate.stopTimeUpdate ?? []);
     }
 
     for (const vehiclePosition of vehiclePositions) {
       let journey: Journey | undefined;
 
       if (typeof vehiclePosition.trip !== "undefined") {
-        journey = source.gtfs.journeys.find((j) => matchJourneyAndTripUpdate(j, vehiclePosition.trip!));
-        if (typeof journey !== "undefined") {
+        const updatedAt = Temporal.Instant.fromEpochSeconds(vehiclePosition.timestamp);
+        if (now.since(updatedAt).total("minutes") >= 10) continue;
+
+        const trip = source.gtfs.trips.get(vehiclePosition.trip.tripId);
+        if (typeof trip !== "undefined") {
+          const firstStopTime = trip.stopTimes.at(0)!;
+
+          const startDate =
+            typeof vehiclePosition.trip.startDate !== "undefined"
+              ? Temporal.PlainDate.from(vehiclePosition.trip.startDate)
+              : guessStartDate(
+                  firstStopTime.arrivalTime,
+                  firstStopTime.arrivalModulus,
+                  updatedAt.toZonedDateTimeISO(trip.route.agency.timeZone),
+                );
+
+          journey = source.gtfs.journeys.find((journey) => journey.date.equals(startDate) && journey.trip === trip);
+          if (typeof journey === "undefined") {
+            journey = trip.getScheduledJourney(startDate, true);
+            source.gtfs.journeys.push(journey);
+          }
+
           if (now.since(Temporal.Instant.fromEpochSeconds(vehiclePosition.timestamp)).total("minutes") >= 10) {
             const lastCall = journey.calls.at(-1)!;
             if (
@@ -110,6 +135,9 @@ export async function computeVehicleJourneys(source: Source) {
       const vehicleRef =
         source.getVehicleRef?.(vehiclePosition.vehicle) ?? vehiclePosition.vehicle.label ?? vehiclePosition.vehicle.id;
 
+      const tripRef =
+        typeof journey !== "undefined" ? (source.mapTripRef?.(journey.trip.id) ?? journey.trip.id) : undefined;
+
       const calls =
         typeof journey !== "undefined"
           ? typeof vehiclePosition.currentStopSequence !== "undefined"
@@ -119,13 +147,13 @@ export async function computeVehicleJourneys(source: Source) {
               : getCalls(journey, now)
           : undefined;
 
-      const key = `${networkRef}:${operatorRef ?? ""}:Vehicle:${vehiclePosition.vehicle.id}`;
+      const key = `${networkRef}:${operatorRef ?? ""}:Vehicle:${vehicleRef}`;
       activeJourneys.set(key, {
         id: key,
         ...(typeof journey !== "undefined"
           ? {
               line: {
-                ref: `${source.getNetworkRef(journey)}:Line:${journey.trip.route.id}`,
+                ref: `${networkRef}:Line:${source.mapLineRef?.(journey.trip.route.id) ?? journey.trip.route.id}`,
                 number: journey.trip.route.name,
                 type: journey.trip.route.type,
                 color: journey.trip.route.color,
@@ -139,7 +167,7 @@ export async function computeVehicleJourneys(source: Source) {
                   return {
                     aimedTime: isLast ? call.aimedArrivalTime : call.aimedDepartureTime,
                     expectedTime: isLast ? call.expectedArrivalTime : call.expectedDepartureTime,
-                    stopId: call.stop.id,
+                    stopRef: `${networkRef}:StopPoint:${source.mapStopRef?.(call.stop.id) ?? call.stop.id}`,
                     stopName: call.stop.name,
                     stopOrder: call.sequence,
                     callStatus: call.status,
@@ -154,9 +182,10 @@ export async function computeVehicleJourneys(source: Source) {
           type: "GPS",
           recordedAt: Temporal.Instant.fromEpochSeconds(vehiclePosition.timestamp),
         },
+        journeyRef: typeof journey !== "undefined" ? `${networkRef}:ServiceJourney:${tripRef}` : undefined,
+        datedJourneyRef:
+          typeof journey !== "undefined" ? `${networkRef}:DatedServiceJourney:${tripRef}:${journey.date}` : undefined,
         networkRef,
-        journeyRef: journey?.trip.id,
-        datedJourneyRef: journey?.id,
         operatorRef,
         vehicleRef,
         updatedAt: now,
@@ -168,11 +197,13 @@ export async function computeVehicleJourneys(source: Source) {
       if (typeof journey.trip.block !== "undefined" && handledBlockIds.has(journey.trip.block)) continue;
       if (typeof source.allowScheduled === "function" && !source.allowScheduled(journey.trip)) continue;
 
-      const vehicleDescriptor = tripUpdates.find((tu) => matchJourneyAndTripUpdate(journey, tu.trip))?.vehicle;
+      const vehicleDescriptor = tripUpdates.find((tu) => matchJourneyToTripDescriptor(journey, tu.trip))?.vehicle;
 
       const networkRef = source.getNetworkRef(journey);
       const operatorRef = source.getOperatorRef?.(journey, vehicleDescriptor);
       const vehicleRef = source.getVehicleRef?.(vehicleDescriptor) ?? vehicleDescriptor?.label ?? vehicleDescriptor?.id;
+
+      const tripRef = source.mapTripRef?.(journey.trip.id) ?? journey.trip.id;
 
       if (typeof journey.trip.block !== "undefined") {
         handledBlockIds.add(journey.trip.block);
@@ -183,12 +214,12 @@ export async function computeVehicleJourneys(source: Source) {
 
       const key =
         typeof vehicleDescriptor !== "undefined"
-          ? `${networkRef}:${operatorRef ?? ""}:Vehicle:${vehicleDescriptor.id}`
-          : `${networkRef}:${operatorRef ?? ""}:ServiceJourney:${journey.id}`;
+          ? `${networkRef}:${operatorRef ?? ""}:Vehicle:${vehicleRef}`
+          : `${networkRef}:${operatorRef ?? ""}:FakeVehicle:${tripRef}:${journey.date}`;
       activeJourneys.set(key, {
         id: key,
         line: {
-          ref: `${source.getNetworkRef(journey, vehicleDescriptor)}:Line:${journey.trip.route.id}`,
+          ref: `${networkRef}:Line:${source.mapLineRef?.(journey.trip.route.id) ?? journey.trip.route.id}`,
           number: journey.trip.route.name,
           type: journey.trip.route.type,
           color: journey.trip.route.color,
@@ -201,16 +232,16 @@ export async function computeVehicleJourneys(source: Source) {
           return {
             aimedTime: isLast ? call.aimedArrivalTime : call.aimedDepartureTime,
             expectedTime: isLast ? call.expectedArrivalTime : call.expectedDepartureTime,
-            stopId: call.stop.id,
+            stopRef: `${networkRef}:StopPoint:${source.mapStopRef?.(call.stop.id) ?? call.stop.id}`,
             stopName: call.stop.name,
             stopOrder: call.sequence,
             callStatus: call.status,
           };
         }),
         position: journey.guessPosition(now),
+        journeyRef: `${networkRef}:ServiceJourney:${tripRef}`,
+        datedJourneyRef: `${networkRef}:DatedServiceJourney:${tripRef}:${journey.date}`,
         networkRef,
-        journeyRef: journey.trip.id,
-        datedJourneyRef: journey.id,
         operatorRef,
         vehicleRef,
         updatedAt: now,

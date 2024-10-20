@@ -14,7 +14,7 @@ export type VehicleJourneyLine = {
 export type VehicleJourneyCall = {
   aimedTime: Temporal.ZonedDateTime;
   expectedTime?: Temporal.ZonedDateTime;
-  stopId: string;
+  stopRef: string;
   stopName: string;
   stopOrder: number;
   callStatus: "SCHEDULED" | "SKIPPED";

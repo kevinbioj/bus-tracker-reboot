@@ -13,7 +13,7 @@ export async function downloadGtfsRt(
   const tripUpdates: TripUpdate[] = [];
   const vehiclePositions: VehiclePosition[] = [];
 
-  await Promise.all(
+  await Promise.allSettled(
     realtimeFeedHrefs.map(async (realtimeFeedHref) => {
       const response = await fetch(realtimeFeedHref, { signal: AbortSignal.timeout(5_000) });
 

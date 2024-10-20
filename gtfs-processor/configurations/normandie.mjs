@@ -1,5 +1,15 @@
 import { Temporal } from "temporal-polyfill";
 
+function nthIndexOf(input, pattern, n) {
+  const length = input.length;
+  let i = -1;
+  while (n-- && i++ < length) {
+    i = input.indexOf(pattern, i);
+    if (i < 0) break;
+  }
+  return i;
+}
+
 /** @type {import('../src/configuration').Source[]} */
 const sources = [
   //- NOMAD
@@ -10,14 +20,19 @@ const sources = [
       "https://api.atm.cityway.fr/dataflow/horaire-tc-tr/download?provider=NOMAD&dataFormat=GTFS-RT",
       "https://api.atm.cityway.fr/dataflow/vehicule-tc-tr/download?provider=NOMAD&dataFormat=GTFS-RT",
     ],
-    gtfsOptions: { shapesStrategy: "IGNORE" },
     getNetworkRef: () => "NOMAD-CAR",
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
+    mapTripRef: (tripRef) => tripRef.slice(nthIndexOf(tripRef, ":", 2) + 1, nthIndexOf(tripRef, ":", 3)),
   },
   {
     id: "nomad-train",
     staticResourceHref: "https://gtfs.bus-tracker.fr/nomad-train.zip",
     realtimeResourceHrefs: ["https://proxy.transport.data.gouv.fr/resource/sncf-ter-gtfs-rt-trip-updates"],
     getNetworkRef: () => "NOMAD-TRAIN",
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 3) + 1, lineRef.lastIndexOf(":")),
+    mapStopRef: (stopRef) => stopRef.slice(stopRef.indexOf(":") + 1),
+    mapTripRef: (tripRef) => tripRef.slice(0, tripRef.indexOf(":")),
   },
   //- Astuce
   {
@@ -28,8 +43,8 @@ const sources = [
       "https://gtfs.bus-tracker.fr/gtfs-rt/tcar/vehicle-positions",
     ],
     allowScheduled: (trip) =>
-      !["13", "14", "28", "33", "35", "36", "37", "38", "42", "44"].includes(trip.route.id) && +trip.route.id < 100,
-    // allowScheduled: (trip) => ["06", "89", "99"].includes(trip.route.id),
+      ["06", "89", "99"].includes(trip.route.id) ||
+      ["IST_", "INT_"].some((pattern) => trip.service.id.includes(pattern)),
     getNetworkRef: () => "ASTUCE",
     getOperatorRef: (journey, vehicle) => {
       if (
@@ -86,7 +101,6 @@ const sources = [
     getNetworkRef: () => "LIA",
   },
   //- Twisto
-
   //- Cap Cotentin
   {
     id: "cap-cotentin",
@@ -101,12 +115,18 @@ const sources = [
     staticResourceHref: "https://www.data.gouv.fr/fr/datasets/r/98bbbf7c-10ff-48a0-afc2-c5f7b3dda5af",
     gtfsOptions: { excludeRoute: (route) => route.route_id.startsWith("S") },
     getNetworkRef: () => "SEMO",
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
+    mapTripRef: (tripRef) => tripRef.slice(nthIndexOf(tripRef, ":", 2) + 1, nthIndexOf(tripRef, ":", 3)),
   },
   //- Transurbain
   {
     id: "transurbain",
     staticResourceHref: "https://www.data.gouv.fr/fr/datasets/r/ec78df83-2e60-4284-acc3-86a0baa76bf0",
     getNetworkRef: () => "TRANSURBAIN",
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
+    mapTripRef: (tripRef) => tripRef.slice(nthIndexOf(tripRef, ":", 2) + 1, nthIndexOf(tripRef, ":", 3)),
   },
   //- DeepMob
   {
@@ -147,6 +167,8 @@ const sources = [
     allowScheduled: () => false,
     getNetworkRef: () => "ASTROBUS",
     getVehicleRef: () => undefined,
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
   },
   //- RezoBus
   {
@@ -161,12 +183,14 @@ const sources = [
   //- Neva
   {
     id: "neva",
-    staticResourceHref: "https://zenbus.net/gtfs/static/download.zip?dataset=neva",
-    realtimeResourceHrefs: ["https://zenbus.net/gtfs/rt/poll.proto?dataset=neva"],
+    staticResourceHref: "https://zenbus.net/gtfs/static/download.zip?dataset=granville",
+    realtimeResourceHrefs: ["https://zenbus.net/gtfs/rt/poll.proto?dataset=granville"],
     gtfsOptions: { shapesStrategy: "IGNORE" },
     allowScheduled: () => false,
     getNetworkRef: () => "NEVA",
     getVehicleRef: () => undefined,
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
   },
   //- Ficibus
   {
@@ -179,6 +203,9 @@ const sources = [
     gtfsOptions: { shapesStrategy: "IGNORE" },
     allowScheduled: () => false,
     getNetworkRef: () => "FICIBUS",
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
+    mapTripRef: (tripRef) => tripRef.slice(nthIndexOf(tripRef, ":", 2) + 1, nthIndexOf(tripRef, ":", 3)),
   },
   //- MOCA
   {
@@ -199,6 +226,8 @@ const sources = [
     allowScheduled: () => false,
     getNetworkRef: () => "HOBUS",
     getVehicleRef: () => undefined,
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
   },
   //- Bybus
   {
@@ -219,6 +248,8 @@ const sources = [
     allowScheduled: () => false,
     getNetworkRef: () => "IBUS",
     getVehicleRef: () => undefined,
+    mapLineRef: (lineRef) => lineRef.slice(nthIndexOf(lineRef, ":", 2) + 1, nthIndexOf(lineRef, ":", 3)),
+    mapStopRef: (stopRef) => stopRef.slice(nthIndexOf(stopRef, ":", 3) + 1, nthIndexOf(stopRef, ":", 4)),
   },
   //- LeBus (Pont-Audemer)
   {
