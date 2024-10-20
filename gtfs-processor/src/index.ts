@@ -91,7 +91,8 @@ new Cron("0 0 0 * * *", () => {
   for (const source of configuration.sources) {
     const sourceId = padSourceId(source);
     if (typeof source.gtfs === "undefined") {
-      return console.warn("%s ⚠ Source has no loaded GTFS data, ignoring.", sourceId);
+      console.warn("%s ⚠ Source has no loaded GTFS data, ignoring.", sourceId);
+      continue;
     }
 
     const date = Temporal.Now.plainDateISO();
